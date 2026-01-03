@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myapp-k6-test
+  namespace: k6
+data:
+  test.js: |
+    import http from "k6/http";
+    import { check, sleep } from "k6";
+    import { Rate, Trend } from "k6/metrics";
+
+    /*
+      Custom metrics (exposed to Prometheus)
+    */
+    export const k6_error_rate = new Rate("k6_error_rate");
+    export const k6_latency_p95 = new Trend("k6_latency_p95", true);
+
+    /*
+      Canary-safe load profile
+    */
+    export const options = {
+      scenarios: {
+        canary: {
+          executor: "constant-vus",
+          vus: 10,           // SAFE load for canary
+          duration: "2m",
+        },
+      },
+      thresholds: {
+        http_req_failed: ["rate<0.05"],
+        http_req_duration: ["p(95)<500"],
+      },
+    };
+
+    /*
+      Target service
+      BASE_URL is injected by k6-operator
+    */
+    const BASE_URL = __ENV.BASE_URL || "http://myapp:9000";
+
+    export default function () {
+      const res = http.get(`${BASE_URL}/health`);
+
+      const ok = check(res, {
+        "status is 200": (r) => r.status === 200,
+      });
+
+      // Metrics consumed by Argo Rollouts
+      k6_error_rate.add(!ok);
+      k6_latency_p95.add(res.timings.duration);
+
+      sleep(1);
+    }

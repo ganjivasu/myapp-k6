@@ -1,0 +1,15 @@
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: myapp-canary
+  namespace: k6
+spec:
+  parallelism: 1
+  script:
+    configMap:
+      name: myapp-k6-test
+      file: test.js
+  runner:
+    env:
+    - name: BASE_URL
+      value: http://myapp-canary.prod.svc.cluster.local:9000
