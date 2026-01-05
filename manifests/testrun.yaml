@@ -1,7 +1,7 @@
 apiVersion: k6.io/v1alpha1
 kind: TestRun
 metadata:
-  name: myapp-canary
+  name: myapp-canary-k6
   namespace: k6
 spec:
   parallelism: 1
@@ -9,6 +9,7 @@ spec:
     configMap:
       name: myapp-k6-test
       file: test.js
+  arguments: --out prometheus
   runner:
     env:
     - name: BASE_URL
